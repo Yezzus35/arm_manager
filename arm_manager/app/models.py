@@ -27,7 +27,9 @@ class Worker(models.Model):
                                     verbose_name='Номер телефона')
 
     additional_phone_number = models.CharField(max_length=20,
-                                               verbose_name='Дополнительный номер телефона')
+                                               verbose_name='Дополнительный номер телефона',
+                                               null=True,
+                                               blank=True)
 
     birthday = models.DateField(verbose_name='День рождения',
                                 default=timezone.now(),
@@ -159,10 +161,6 @@ class TelegramInfo(models.Model):
 
 # Заказы
 class Order(models.Model):
-    docs = models.ForeignKey('Docs',
-                             verbose_name='Документ',
-                             null=True,
-                             on_delete=models.SET_NULL)
 
     client = models.ForeignKey('Client',
                                verbose_name='Клиент',
@@ -177,41 +175,10 @@ class Order(models.Model):
                               default=0)
 
     def __str__(self):
-        return f'{self.docs if self.docs else ""} {self.client if self.client else ""} {self.worker if self.worker else ""} {self.price if self.price else ""}'
+        return f'{self.client if self.client else ""} {self.worker if self.worker else ""} {self.price if self.price else ""}'
 
     class Meta:
         verbose_name_plural = 'Заказы'
-
-
-# Документы
-class Docs(models.Model):
-    file_name = models.CharField(max_length=255,
-                                 verbose_name='Название файла',
-                                 blank=True)
-
-    file = models.FileField(verbose_name='Файл', upload_to='media/static/')
-
-    file_type = models.ForeignKey('DocsType',
-                                  verbose_name='Тип файла',
-                                  null=True,
-                                  on_delete=models.SET_NULL)
-
-    def __str__(self):
-        return f'{self.file_name if self.file_name else ""} {self.file_type if self.file_type else ""}'
-
-    class Meta:
-        verbose_name_plural = 'Документы'
-
-
-class DocsType(models.Model):
-    type = models.CharField(max_length=255,
-                            verbose_name='Тип документа')
-
-    def __str__(self):
-        return f'{self.type}'
-
-    class Meta:
-        verbose_name_plural = 'Типы документов'
 
 
 # Информация о клиенте
@@ -234,7 +201,9 @@ class Client(models.Model):
                                     verbose_name='Номер телефона',)
 
     additional_phone_number = models.CharField(max_length=20,
-                                               verbose_name='Дополнительный номер телефона',)
+                                               verbose_name='Дополнительный номер телефона',
+                                               null=True,
+                                               blank=True)
 
     telegram_id = models.ForeignKey('TelegramInfo',
                                     blank=True,

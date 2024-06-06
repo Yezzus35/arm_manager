@@ -4,14 +4,13 @@ from django.http import HttpResponse
 from django.utils.encoding import smart_str, iri_to_uri
 
 from .models import *
-from .helper import generate_business_trip_doc
+from .helper import generate_business_trip_doc, generate_order_doc
 
 
 def generate_business_trip_doc_run(modeladmin, request, queryset):
     id_dict = request.POST.getlist('_selected_action')
     if len(id_dict) == 1:  # Проверка, что указана только один заказ для создания документа
         response_file_path = generate_business_trip_doc(id_dict[0])
-        print(response_file_path)
         with open(response_file_path, 'rb') as fh:
             response = HttpResponse(fh.read(), content_type="application/force-download")
             response['Content-Disposition'] = f'attachment; filename={iri_to_uri(response_file_path.split("/")[-1])}'
@@ -21,8 +20,23 @@ def generate_business_trip_doc_run(modeladmin, request, queryset):
         messages.error(request, message=f'Укажите один документ, который хотите сформировать')
 
 
-generate_business_trip_doc_run.short_description = 'Сгенерировать документ для командировки'
+generate_business_trip_doc_run.short_description = 'Сформировать документ для командировки'
 
+
+def generate_order_doc_run(modeladmin, request, queryset):
+    id_dict = request.POST.getlist('_selected_action')
+    if len(id_dict) == 1:  # Проверка, что указана только один заказ для создания документа
+        response_file_path = generate_order_doc(id_dict[0])
+        with open(response_file_path, 'rb') as fh:
+            response = HttpResponse(fh.read(), content_type="application/force-download")
+            response['Content-Disposition'] = f'attachment; filename={iri_to_uri(response_file_path.split("/")[-1])}'
+            response['X-Sendfile'] = smart_str(response_file_path)
+            return response
+    else:
+        messages.error(request, message=f'Укажите один документ, который хотите сформировать')
+
+
+generate_order_doc_run.short_description = 'Сформировать накладную по заказу'
 
 @admin.register(Worker)
 class WorkerAdmin(admin.ModelAdmin):
@@ -67,12 +81,6 @@ class BusinessTripAdmin(admin.ModelAdmin):
                 request._set_post(post)
         return super(BusinessTripAdmin, self).changelist_view(request, extra_context)
 
-    def download_file(self, request, pk):
-        response = HttpResponse(content_type='application/force-download')
-        response['Content-Disposition'] = 'attachment; filename="whatever.txt"'
-        # generate dynamic file content using object pk
-        response.write('whatever content')
-        return response
 
 @admin.register(BusinessTripReason)
 class BusinessTripReason(admin.ModelAdmin):
@@ -99,28 +107,23 @@ class TelegramInfo(admin.ModelAdmin):
 
 
 @admin.register(Order)
-class Order(admin.ModelAdmin):
-    params = ('docs', 'client', 'worker', 'price',)
+class OrderAdmin(admin.ModelAdmin):
+    params = ('client', 'worker', 'price',)
 
     list_display = params
     list_filter = params
     search_fields = params
 
+    actions = (generate_order_doc_run,)
 
-@admin.register(Docs)
-class Docs(admin.ModelAdmin):
-    params = ('file_name', )
-    list_display = params
-    list_filter = params
-    search_fields = params
-
-
-@admin.register(DocsType)
-class DocsType(admin.ModelAdmin):
-    params = ('type', )
-    list_display = params
-    list_filter = params
-    search_fields = params
+    def changelist_view(self, request, extra_context=None):
+        if 'action' in request.POST and request.POST['action'] == 'generate_order_doc_run':
+            if not request.POST.getlist(django.contrib.admin.helpers.ACTION_CHECKBOX_NAME):
+                post = request.POST.copy()
+                for u in BusinessTrip.objects.all()[0:2]:
+                    post.update({django.contrib.admin.helpers.ACTION_CHECKBOX_NAME: str(u.id)})
+                request._set_post(post)
+        return super(OrderAdmin, self).changelist_view(request, extra_context)
 
 
 @admin.register(Client)
