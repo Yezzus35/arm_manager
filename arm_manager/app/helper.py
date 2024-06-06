@@ -63,6 +63,9 @@ def generate_order_doc(order_id):
     # Подсчет общей стоимости
     full_price = product_query.aggregate(sum_product=Sum(F('product_params_id__price') * F('count')))['sum_product']
 
+    # Проставление стоимости в заказ
+    Order.objects.update(price=full_price)
+
     # Количество единиц товара в заказе
     product_counts = product_query.aggregate(count=Sum(F('count')))['count']
 
